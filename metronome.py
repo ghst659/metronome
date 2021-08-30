@@ -5,7 +5,7 @@ import queue
 import threading
 import time
 
-class Metronome(threading.Thread):
+class Metronome:
     """A source of time events.
     Example usage:
       period = datetime.timedelta(seconds=1)
@@ -18,34 +18,36 @@ class Metronome(threading.Thread):
 
     def __init__(self, period: datetime.timedelta):
         """Initialises the metronome with a given period."""
-        threading.Thread.__init__(self)
+        self._thread = threading.Thread(name="Metronome", target=self._run)
+        self._lock = threading.RLock()
         self._period = period
         self._out_queue = queue.Queue()
-        self._end_run = threading.Event()
-        self._end_run.clear()
-        self._lock = threading.RLock()
+        self._done = threading.Event()
+        self._done.clear()
+
+    def _run(self):
+        """Periodically enqueues tick events; runs in the self._thread."""
+        with self._lock:
+            while not self._out_queue.empty():
+                self._out_queue.get()
+        self._done.clear()
+        while not self._done.is_set():
+            time.sleep(self._period.total_seconds())
+            with self._lock:
+                if not self._out_queue.full():
+                    self._out_queue.put_nowait(time.time())
+
+    def start(self):
+        """Starts the metronome."""
+        self._thread.start()
 
     def close(self):
         """Stops the metronome from generating events.
         Typically called via a contextlib.closing context manager
         on client exit from a with-clause.
         """
-        self._end_run.set()
-        self.join()
-
-    def run(self):
-        """Periodically enqueues tick events.
-        Called by self.start(); not to be directly called by the client.
-        """
-        with self._lock:
-            while not self._out_queue.empty():
-                self._out_queue.get()
-        self._end_run.clear()
-        while not self._end_run.is_set():
-            time.sleep(self._period.total_seconds())
-            with self._lock:
-                if not self._out_queue.full():
-                    self._out_queue.put_nowait(time.time())
+        self._done.set()
+        self._thread.join()
 
     def get(self):
         """Blocking call to retrieve tick events."""
