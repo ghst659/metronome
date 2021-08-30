@@ -20,9 +20,10 @@ class Metronome(threading.Thread):
         """Initialises the metronome with a given period."""
         threading.Thread.__init__(self)
         self._period = period
-        self._out_queue = queue.SimpleQueue()
+        self._out_queue = queue.Queue()
         self._end_run = threading.Event()
         self._end_run.clear()
+        self._lock = threading.RLock()
 
     def close(self):
         """Stops the metronome from generating events.
@@ -36,13 +37,17 @@ class Metronome(threading.Thread):
         """Periodically enqueues tick events.
         Called by self.start(); not to be directly called by the client.
         """
-        while not self._out_queue.empty():
-            self._out_queue.get()
+        with self._lock:
+            while not self._out_queue.empty():
+                self._out_queue.get()
         self._end_run.clear()
         while not self._end_run.is_set():
             time.sleep(self._period.total_seconds())
-            self._out_queue.put_nowait(time.time())
+            with self._lock:
+                if not self._out_queue.full():
+                    self._out_queue.put_nowait(time.time())
 
     def get(self):
         """Blocking call to retrieve tick events."""
-        return self._out_queue.get()
+        with self._lock:
+            return self._out_queue.get()

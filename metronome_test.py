@@ -24,8 +24,9 @@ class TestMetronome(unittest.TestCase):
         got = []
         period = datetime.timedelta(seconds=2)
         mt = MockTime()
-        with patch("time.sleep", side_effect=mt.sleep), patch("time.time", side_effect=mt.time):
-            with contextlib.closing(metronome.Metronome(period)) as ticker
+        with patch("time.sleep", side_effect=mt.sleep), \
+             patch("time.time", side_effect=mt.time):
+            with contextlib.closing(metronome.Metronome(period)) as ticker:
                 ticker.start()
                 for i in range(5):
                     got.append(ticker.get())
