@@ -21,7 +21,7 @@ class Metronome:
         self._thread = threading.Thread(name="Metronome", target=self._run)
         self._lock = threading.RLock()
         self._period = period
-        self._out_queue = queue.Queue()
+        self._out_queue = queue.Queue(maxsize=0)
         self._done = threading.Event()
         self._done.clear()
 
@@ -52,4 +52,11 @@ class Metronome:
     def get(self):
         """Blocking call to retrieve tick events."""
         with self._lock:
-            return self._out_queue.get()
+            result = self._out_queue.get()
+            self._out_queue.task_done()
+        return result
+
+    def backlog(self) -> int:
+        """Returns the count of events in the queue."""
+        with self._lock:
+            return self._out_queue.qsize()

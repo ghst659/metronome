@@ -30,6 +30,7 @@ class TestMetronome(unittest.TestCase):
                 ticker.start()
                 for i in range(5):
                     got.append(ticker.get())
+            print("backlog:", ticker.backlog())
         self.assertEqual(got, [2.0, 4.0, 6.0, 8.0, 10.0])
 
 if __name__ == "__main__":
