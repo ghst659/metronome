@@ -15,10 +15,14 @@ class Metronome:
           t = ticker.get()
           print("tick at", t)
     """
+    _thread: threading.Thread
+    _period: datetime.timedelta
+    _out_queue: queue.Queue
+    _done: threading.Event
 
-    def __init__(self, period: datetime.timedelta):
+    def __init__(self, period: datetime.timedelta, name: str = "Metronome"):
         """Initialises the metronome with a given period."""
-        self._thread = threading.Thread(name="Metronome", target=self._run)
+        self._thread = threading.Thread(name=name, target=self._run)
         self._period = period
         self._out_queue = queue.Queue(maxsize=0)
         self._done = threading.Event()
@@ -46,7 +50,7 @@ class Metronome:
         self._done.set()
         self._thread.join()
 
-    def get(self):
+    def get(self) -> float:
         """Blocking call to retrieve tick events."""
         result = self._out_queue.get()
         self._out_queue.task_done()
