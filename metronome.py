@@ -19,7 +19,6 @@ class Metronome:
     def __init__(self, period: datetime.timedelta):
         """Initialises the metronome with a given period."""
         self._thread = threading.Thread(name="Metronome", target=self._run)
-        self._lock = threading.RLock()
         self._period = period
         self._out_queue = queue.Queue(maxsize=0)
         self._done = threading.Event()
@@ -27,15 +26,13 @@ class Metronome:
 
     def _run(self):
         """Periodically enqueues tick events; runs in the self._thread."""
-        with self._lock:
-            while not self._out_queue.empty():
-                self._out_queue.get()
+        while not self._out_queue.empty():
+            self._out_queue.get()
         self._done.clear()
         while not self._done.is_set():
             time.sleep(self._period.total_seconds())
-            with self._lock:
-                if not self._out_queue.full():
-                    self._out_queue.put_nowait(time.time())
+            if not self._out_queue.full():
+                self._out_queue.put_nowait(time.time())
 
     def start(self):
         """Starts the metronome."""
@@ -51,12 +48,10 @@ class Metronome:
 
     def get(self):
         """Blocking call to retrieve tick events."""
-        with self._lock:
-            result = self._out_queue.get()
-            self._out_queue.task_done()
+        result = self._out_queue.get()
+        self._out_queue.task_done()
         return result
 
     def backlog(self) -> int:
         """Returns the count of events in the queue."""
-        with self._lock:
-            return self._out_queue.qsize()
+        return self._out_queue.qsize()
